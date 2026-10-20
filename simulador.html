@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Braco Robotico - UFRJ</title>
+    <!-- Babylon.js -->
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.js"></script>
+    <script src="https://cdn.babylonjs.com/gui/babylon.gui.min.js"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        html, body {
+            overflow: hidden;
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: row;
+        }
+
+        #mainContent {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            height: 100%;
+        }
+
+        #canvasZone {
+            width: 100%;
+            height: 65%;
+        }
+
+        #chartsZone {
+            width: 100%;
+            height: 35%;
+            display: flex;
+            justify-content: space-around
+        }
+
+        .chartContainer {
+            width: 33%;
+            height: 100%;
+            position: relative;
+        }
+
+        .chartContainer canvas {
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+        #renderCanvas {
+            width: 100%;
+            height: 100%;
+            touch-action: none;
+        }
+
+        #tabBar {
+            width: 100%;
+            height: 20px;
+            display: flex;
+            background: #eee;
+            border-top: 1px solid #ccc;
+        }
+        .tabButton {
+            flex: 1;
+            border: none;
+            background: none;
+            font-size: 0.7em;
+            cursor: pointer;
+            padding: 2px 0;
+            transition: background 0.2s;
+        }
+        .tabButton.active {
+            background: #ddd;
+            font-weight: bold;
+        }
+        #tabContent {
+            width: 100%;
+            height: calc(35% - 40px);
+            position: relative;
+        }
+        .tabPane {
+            display: none;
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+        .tabPane.active {
+            display: block;
+        }
+
+        #tab-programming {
+            background: #f8fafc;
+            color: #172033;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+        }
+
+        .programming-layout {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            height: 100%;
+        }
+
+        .programming-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 3px 8px;
+            border-bottom: 1px solid #cbd5e1;
+            background: #fff;
+            flex-wrap: wrap;
+        }
+
+        .programming-toolbar-label {
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        #programJointSelector {
+            display: flex;
+            gap: 4px;
+        }
+
+        .joint-selector-button {
+            min-width: 38px;
+            height: 22px;
+            border: 1px solid #94a3b8;
+            border-radius: 4px;
+            background: #fff;
+            color: #334155;
+            cursor: pointer;
+        }
+
+        .joint-selector-button.active {
+            border-color: #2563eb;
+            background: #2563eb;
+            color: #fff;
+        }
+
+        .joint-selector-button:disabled {
+            cursor: not-allowed;
+            opacity: 0.55;
+        }
+
+        #programStatus {
+            margin-left: auto;
+            min-height: 16px;
+            font-size: 12px;
+            color: #475569;
+        }
+
+        #programStatus.error {
+            color: #b91c1c;
+            font-weight: 700;
+        }
+
+        #programTableContainer {
+            flex: 1;
+            min-height: 0;
+            overflow: auto;
+            padding: 3px 8px 6px;
+        }
+
+        .programming-empty {
+            display: grid;
+            height: 100%;
+            place-items: center;
+            color: #64748b;
+            font-size: 13px;
+            text-align: center;
+        }
+
+        .programming-table {
+            width: 100%;
+            min-width: 680px;
+            border-collapse: separate;
+            border-spacing: 0;
+            font-size: 12px;
+        }
+
+        .programming-table th,
+        .programming-table td {
+            border-right: 1px solid #cbd5e1;
+            border-bottom: 1px solid #cbd5e1;
+            padding: 2px 4px;
+            text-align: center;
+            line-height: 16px;
+        }
+
+        .programming-table th:first-child,
+        .programming-table td:first-child {
+            border-left: 1px solid #cbd5e1;
+        }
+
+        .programming-table thead th {
+            position: sticky;
+            top: 0;
+            z-index: 1;
+            border-top: 1px solid #cbd5e1;
+            background: #e2e8f0;
+            color: #1e293b;
+            white-space: nowrap;
+        }
+
+        .programming-table tbody tr {
+            background: #fff;
+            cursor: pointer;
+        }
+
+        .programming-table tbody tr:nth-child(even) {
+            background: #f8fafc;
+        }
+
+        .programming-table tbody tr.selected {
+            background: #dbeafe;
+        }
+
+        .programming-table input {
+            width: 100%;
+            min-width: 88px;
+            box-sizing: border-box;
+            height: 22px;
+            padding: 1px 4px;
+            border: 1px solid #94a3b8;
+            border-radius: 3px;
+            text-align: right;
+            font: inherit;
+            background: #fff;
+        }
+
+        .programming-table input:disabled {
+            border-color: transparent;
+            background: transparent;
+            color: #64748b;
+        }
+
+        .programming-table input.invalid {
+            border-color: #dc2626;
+            background: #fef2f2;
+        }
+
+        .velocity-field {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .velocity-source {
+            color: #64748b;
+            font-size: 9px;
+            white-space: nowrap;
+        }
+
+        .use-suggested-velocity {
+            height: 22px;
+            padding: 0 7px;
+            border: 1px solid #2563eb;
+            border-radius: 3px;
+            background: #eff6ff;
+            color: #1d4ed8;
+            font-size: 10px;
+            white-space: nowrap;
+            cursor: pointer;
+        }
+
+        .use-suggested-velocity:hover:not(:disabled) {
+            background: #dbeafe;
+        }
+
+        .use-suggested-velocity:disabled {
+            cursor: not-allowed;
+            opacity: 0.55;
+        }
+
+        #tab-instructions {
+            background: #f8fafc;
+            color: #172033;
+            font-family: Arial, sans-serif;
+            overflow: auto;
+        }
+
+        .instructions-content {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 10px 18px 18px;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+        .instructions-content h2 {
+            font-size: 15px;
+            margin: 8px 0 4px;
+        }
+
+        .instructions-content h3 {
+            font-size: 13px;
+            margin: 12px 0 4px;
+            color: #1e293b;
+            border-bottom: 1px solid #cbd5e1;
+            padding-bottom: 2px;
+        }
+
+        .instructions-content p {
+            margin: 4px 0;
+        }
+
+        .instructions-content ol,
+        .instructions-content ul {
+            margin: 4px 0 4px 0;
+            padding-left: 20px;
+        }
+
+        .instructions-content li {
+            margin: 3px 0;
+        }
+
+        .instructions-content .intro {
+            color: #475569;
+        }
+
+        .instructions-content code,
+        .instructions-content kbd {
+            background: #e2e8f0;
+            border-radius: 3px;
+            padding: 1px 5px;
+            font-family: Consolas, "Courier New", monospace;
+            font-size: 11px;
+        }
+
+        .instructions-content kbd {
+            border: 1px solid #94a3b8;
+            border-bottom-width: 2px;
+        }
+
+        .instructions-content .btn-ref {
+            display: inline-block;
+            border-radius: 3px;
+            padding: 0 6px;
+            color: #fff;
+            font-weight: 700;
+            font-size: 11px;
+            line-height: 16px;
+        }
+
+        .btn-ref.green { background: #16a34a; }
+        .btn-ref.blue { background: #2563eb; }
+        .btn-ref.red { background: #dc2626; }
+        .btn-ref.purple { background: #7c3aed; }
+
+        .instructions-content table.keys {
+            border-collapse: collapse;
+            margin: 6px 0;
+            font-size: 11px;
+        }
+
+        .instructions-content table.keys th,
+        .instructions-content table.keys td {
+            border: 1px solid #cbd5e1;
+            padding: 2px 8px;
+            text-align: left;
+        }
+
+        .instructions-content table.keys th {
+            background: #e2e8f0;
+        }
+
+        .instructions-content .tip {
+            background: #eff6ff;
+            border-left: 3px solid #2563eb;
+            padding: 4px 10px;
+            margin: 6px 0;
+            border-radius: 0 4px 4px 0;
+        }
+    </style>
+</head>
+<body>
+    <div id="mainContent">
+        <div id="canvasZone"><canvas id="renderCanvas"></canvas></div>
+        <div id="tabBar">
+            <button class="tabButton active" data-tab="charts">Gráficos</button>
+            <button class="tabButton" data-tab="programming">Programação</button>
+            <button class="tabButton" data-tab="instructions">Instruções</button>
+            <button class="tabButton" data-tab="data">Dados</button>
+            <button id="minimizeTabContent" title="Minimizar gráficos">✕</button>
+        </div>
+        <div id="tabContent">
+            <div class="tabPane active" id="tab-charts">
+                <div style="width:100%;height:100%;display:flex;justify-content:space-around">
+                    <div class="chartContainer"><canvas id="gPos"></canvas></div>
+                    <div class="chartContainer"><canvas id="gVel"></canvas></div>
+                    <div class="chartContainer"><canvas id="gAce"></canvas></div>
+                </div>
+            </div>
+            <div class="tabPane" id="tab-programming">
+                <div class="programming-layout">
+                    <div class="programming-toolbar">
+                        <span class="programming-toolbar-label">Junta:</span>
+                        <div id="programJointSelector" aria-label="Selecionar junta"></div>
+                        <span id="programStatus" aria-live="polite"></span>
+                    </div>
+                    <div id="programTableContainer"></div>
+                </div>
+            </div>
+            <div class="tabPane" id="tab-instructions">
+                <div class="instructions-content">
+                    <h2>Como usar o simulador</h2>
+                    <p class="intro">
+                        Este simulador reproduz um braço robótico de 6 graus de liberdade (6 juntas: θ1 a θ6).
+                        Você posiciona o robô, grava pontos de passagem e executa uma trajetória suave
+                        interpolada por polinômios cúbicos, acompanhando posição, velocidade e aceleração
+                        de cada junta nos gráficos.
+                    </p>
+
+                    <h3>1. Navegar na cena 3D</h3>
+                    <ul>
+                        <li><strong>Girar a câmera:</strong> clique com o botão esquerdo e arraste.</li>
+                        <li><strong>Deslocar (pan):</strong> clique com o botão direito e arraste.</li>
+                        <li><strong>Zoom:</strong> use a roda do mouse.</li>
+                        <li>Botão <span class="btn-ref blue">Toggle Axes</span> (canto esquerdo): mostra/oculta os eixos de coordenadas de cada junta e do atuador.</li>
+                    </ul>
+
+                    <h3>2. Posicionar o robô</h3>
+                    <p>Use o botão <span class="btn-ref purple">Toggle direct/inverse kinematics</span> (canto direito) para alternar entre os dois modos de controle:</p>
+                    <ul>
+                        <li><strong>Cinemática direta:</strong> seis sliders (θ1 a θ6) controlam diretamente o ângulo de cada junta.</li>
+                        <li><strong>Cinemática inversa:</strong> sliders de <code>Posição X</code>, <code>Y</code>, <code>Z</code> e de orientação <code>Roll</code>, <code>Pitch</code>, <code>Yaw</code> definem a pose do atuador; o sistema calcula automaticamente os ângulos das juntas.</li>
+                    </ul>
+                    <p>No modo de cinemática direta você também pode usar o teclado para ajustes finos:</p>
+                    <table class="keys">
+                        <tr><th>Junta</th><th>Diminuir</th><th>Aumentar</th></tr>
+                        <tr><td>θ1 (base / waist)</td><td><kbd>Q</kbd></td><td><kbd>W</kbd></td></tr>
+                        <tr><td>θ2 (braço 1)</td><td><kbd>E</kbd></td><td><kbd>R</kbd></td></tr>
+                        <tr><td>θ3 (braço 2)</td><td><kbd>A</kbd></td><td><kbd>S</kbd></td></tr>
+                        <tr><td>θ4 (punho)</td><td><kbd>D</kbd></td><td><kbd>F</kbd></td></tr>
+                        <tr><td>θ5 (mão)</td><td><kbd>X</kbd></td><td><kbd>Z</kbd></td></tr>
+                        <tr><td>θ6 (garra)</td><td><kbd>C</kbd></td><td><kbd>V</kbd></td></tr>
+                    </table>
+                    <p>A aba <strong>Dados</strong> mostra a matriz de transformação homogênea do atuador na pose atual.</p>
+
+                    <h3>3. Gravar os pontos do programa</h3>
+                    <ol>
+                        <li>Leve o robô até a pose desejada (passo 2).</li>
+                        <li>Defina, no controle <code>[ − | nº | + ]</code> do painel esquerdo, o <strong>tempo em segundos (Δt)</strong> que o robô deve levar para chegar a este ponto a partir do anterior.</li>
+                        <li>Clique em <span class="btn-ref blue">Add Point</span> para gravar. Uma esfera vermelha marca o ponto na cena.</li>
+                        <li>Repita para cada ponto da trajetória (é preciso ao menos <strong>2 pontos</strong>). O primeiro ponto é o de partida e não possui Δt.</li>
+                        <li>Use <span class="btn-ref red">Clear Points</span> para apagar todos os pontos e recomeçar.</li>
+                    </ol>
+
+                    <h3>4. Ajustar o programa (aba Programação)</h3>
+                    <ul>
+                        <li>Selecione a junta (θ1 a θ6) nos botões do topo para editar seus valores.</li>
+                        <li>Edite por ponto: <code>Δt anterior [s]</code>, <code>posição [grau]</code> e <code>velocidade [grau/s]</code>. O <code>Tempo acumulado</code> é calculado automaticamente.</li>
+                        <li>Clicar em uma linha move o robô para aquele ponto e o destaca na cena.</li>
+                        <li>Botão <strong>Usar sugestão</strong>: preenche a velocidade da junta no ponto com um valor contínuo sugerido (evita paradas bruscas em pontos intermediários). Pontos inicial e final têm velocidade zero.</li>
+                        <li>Valores fora dos limites da junta ou durações ≤ 0 ficam destacados em vermelho e impedem a execução.</li>
+                    </ul>
+
+                    <h3>5. Executar e analisar</h3>
+                    <ol>
+                        <li>Clique em <span class="btn-ref green">Start Program</span> para iniciar a trajetória. O botão passa a <span class="btn-ref red">Stop Program</span> — clique novamente para interromper.</li>
+                        <li>O atuador percorre os pontos na ordem gravada, e uma linha branca desenha o caminho na cena.</li>
+                        <li>Na aba <strong>Gráficos</strong>, acompanhe em tempo real a <strong>posição</strong>, a <strong>velocidade</strong> e a <strong>aceleração</strong> de cada junta ao longo do tempo.</li>
+                    </ol>
+
+                    <div class="tip">
+                        <strong>Dica:</strong> durante a execução os controles de edição ficam bloqueados.
+                        Pare o programa para adicionar, remover ou editar pontos.
+                    </div>
+                </div>
+            </div>
+            <div class="tabPane" id="tab-data">
+            </div>
+        </div>
+    </div>
+    <script src="aux_func.js"></script>
+    <script src="grafico.js"></script>
+    <script src="trajectory_math.js"></script>
+    <script src="scene.js"></script>
+</body>
+</html>
